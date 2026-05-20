@@ -710,7 +710,7 @@ class AutoClickDragApp(tk.Tk):
 
         set_cursor_pos(*source)
         self._sleep_interruptible(0.05)
-        for _ in range(clicks_to_drag - 1):
+        for _ in range(clicks_to_drag):
             if self.stop_event.is_set():
                 return
             left_click()
@@ -719,24 +719,23 @@ class AutoClickDragApp(tk.Tk):
         if self.stop_event.is_set():
             return
 
-        set_cursor_pos(*source)
-        left_down()
         self._sleep_interruptible(config.hold_delay)
 
         if config.detect_marker and not self.stop_event.is_set():
             selected_text = copy_selected_text(config.copy_delay)
             if config.marker_text in selected_text:
-                left_up()
                 self._sleep_interruptible(config.click_interval)
                 set_cursor_pos(*source)
-                left_down()
+                left_click()
                 self._sleep_interruptible(config.hold_delay)
-                self.post_status(f"Đã thấy '{config.marker_text}', chuyển sang click thứ 3 để kéo.")
+                self.post_status(f"Đã thấy '{config.marker_text}', đã click thêm 1 lần trước khi kéo.")
 
         if self.stop_event.is_set():
             left_up()
             return
 
+        set_cursor_pos(*source)
+        left_down()
         self._drag_to(source, target, config.drag_duration)
         left_up()
         self._sleep_interruptible(0.05)

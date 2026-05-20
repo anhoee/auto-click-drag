@@ -58,7 +58,7 @@ def main() -> None:
     tk.Label(source_panel, text="Điểm kéo", bg="white", fg="#0f172a", font=("Segoe UI", 12, "bold")).pack(anchor="w", padx=16, pady=(16, 8))
     tk.Label(
         source_panel,
-        text="Double-click sẽ chọn chữ. Nếu thấy dấu '-' thì app click thêm lần thứ 3.",
+        text="Double-click sẽ chọn chữ. Nếu thấy dấu '-' thì app click thêm 1 lần trước khi giữ-kéo.",
         bg="white",
         fg="#475569",
         wraplength=300,
@@ -169,7 +169,7 @@ def main() -> None:
 
     def start_test() -> None:
         source_entry.focus_force()
-        result_label.configure(text="Đang chạy chậm: click 1, click 2 giữ để kiểm tra '-', nếu có thì click 3 giữ-kéo...")
+        result_label.configure(text="Đang chạy chậm: double-click để chọn, kiểm tra '-', click thêm 1 lần nếu cần, rồi giữ-kéo...")
         threading.Thread(target=worker, daemon=True).start()
 
     app.after(800, start_test)
@@ -194,8 +194,8 @@ def main() -> None:
         raise SystemExit("Không copy đúng nội dung nguồn.")
     if not captured["released_on_drop"]:
         raise SystemExit("Không thả đúng vào điểm đích.")
-    if captured["click_count"] != 3:
-        raise SystemExit("Khi thấy dấu '-' phải là 3 lần nhấn, lần cuối giữ-kéo.")
+    if captured["click_count"] != 4:
+        raise SystemExit("Khi thấy dấu '-' phải double-click, click thêm 1 lần, rồi nhấn giữ để kéo.")
     if captured["tab_count"] != 1:
         raise SystemExit("Không bấm Tab sau khi thả.")
 

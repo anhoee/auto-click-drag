@@ -6,8 +6,8 @@
 
 - Lưu điểm nguồn `A/B/C/D` và vị trí thả chuột.
 - Chọn một điểm cố định hoặc random trong các điểm đã tick.
-- Không có ký tự đặc biệt: click lần 1 ngắn, click lần 2 giữ chuột kéo sang ô đích rồi thả.
-- Có ký tự đặc biệt như `-`: click lần 1 ngắn, click lần 2 để kiểm tra nội dung, nếu thấy ký tự thì click lần 3 giữ chuột kéo sang ô đích rồi thả.
+- Không có ký tự đặc biệt: click đủ số lần tại nguồn để bôi đen nội dung, sau đó mới giữ chuột kéo sang ô đích rồi thả.
+- Có ký tự đặc biệt như `-`: click đủ số lần để bôi đen và kiểm tra nội dung, nếu thấy ký tự thì click thêm 1 lần, sau đó mới giữ chuột kéo sang ô đích rồi thả.
 - Sau khi thả chuột, app bấm một phím do người dùng chọn, mặc định là `Tab`.
 - Lặp theo số lần hoặc lặp vô hạn.
 - Tùy chỉnh tốc độ mỗi vòng, thời gian giữa click, thời gian giữ trước khi kéo, thời gian kéo.
@@ -165,4 +165,3 @@ git push -u origin main
 - Nhận diện ký tự dùng cách chọn chữ rồi `Ctrl+C`; nếu nội dung là ảnh, canvas, video hoặc trang chặn copy thì cần làm thêm OCR.
 - Nếu cần điều khiển ứng dụng đang chạy bằng quyền Administrator, hãy chạy Auto Click Drag bằng quyền Administrator.
 - File `.exe` tự build có thể bị Windows Defender hỏi xác nhận vì chưa ký số.
-
