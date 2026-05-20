@@ -25,7 +25,8 @@ kernel32 = ctypes.windll.kernel32
 class POINT(ctypes.Structure):
     _fields_ = [("x", ctypes.c_long), ("y", ctypes.c_long)]
 
-
+MOUSEEVENTF_MOVE = 0x0001
+MOUSEEVENTF_ABSOLUTE = 0x8000
 MOUSEEVENTF_LEFTDOWN = 0x0002
 MOUSEEVENTF_LEFTUP = 0x0004
 KEYEVENTF_KEYUP = 0x0002
@@ -708,8 +709,11 @@ class AutoClickDragApp(tk.Tk):
         target = config.target_point
         clicks_to_drag = max(1, config.click_count)
 
+        # 1. Di chuyển đến điểm nguồn
         set_cursor_pos(*source)
         self._sleep_interruptible(0.05)
+
+        # 2. Thực hiện các click chuẩn (ví dụ: 2 lần click)
         for _ in range(clicks_to_drag):
             if self.stop_event.is_set():
                 return
@@ -719,25 +723,36 @@ class AutoClickDragApp(tk.Tk):
         if self.stop_event.is_set():
             return
 
+        # Nghỉ trước khi kéo (lần thứ 3 click giữ chuột)
         self._sleep_interruptible(config.hold_delay)
 
+        # 3. Logic nhận diện ký tự đặc biệt (Marker)
         if config.detect_marker and not self.stop_event.is_set():
             selected_text = copy_selected_text(config.copy_delay)
             if config.marker_text in selected_text:
-                self._sleep_interruptible(config.click_interval)
-                set_cursor_pos(*source)
-                left_click()
+                # Sửa đổi ở đây: Thay vì click 1 lần, giờ sẽ click 3 lần
+                for _ in range(3):
+                    if self.stop_event.is_set():
+                        return
+                    self._sleep_interruptible(config.click_interval)
+                    set_cursor_pos(*source)
+                    left_click()
+
+                # Nghỉ một chút sau khi click 3 lần xong
                 self._sleep_interruptible(config.hold_delay)
-                self.post_status(f"Đã thấy '{config.marker_text}', đã click thêm 1 lần trước khi kéo.")
+                self.post_status(f"Đã thấy '{config.marker_text}', đã click thêm 3 lần trước khi kéo.")
 
         if self.stop_event.is_set():
             left_up()
             return
 
+        # 4. Thực hiện thao tác Kéo (Lần click giữ chuột)
         set_cursor_pos(*source)
         left_down()
         self._drag_to(source, target, config.drag_duration)
         left_up()
+
+        # 5. Bấm phím kết thúc
         self._sleep_interruptible(0.05)
         press_key(config.key_name)
 
@@ -745,13 +760,35 @@ class AutoClickDragApp(tk.Tk):
         steps = max(8, int(duration / 0.01))
         x1, y1 = source
         x2, y2 = target
+
+        # Lấy độ phân giải màn hình để tính toán tọa độ chuẩn cho mouse_event (0 - 65535)
+        screen_width = user32.GetSystemMetrics(0)
+        screen_height = user32.GetSystemMetrics(1)
+
         for step in range(1, steps + 1):
             if self.stop_event.is_set():
                 return
+
             ratio = step / steps
             x = round(x1 + (x2 - x1) * ratio)
             y = round(y1 + (y2 - y1) * ratio)
-            set_cursor_pos(x, y)
+
+            # Chuyển đổi tọa độ pixel sang tọa độ chuẩn của Windows (0 - 65535)
+            # Công thức: (coord * 65535) / (screen_size - 1) hoặc đơn giản là / screen_size * 65535
+            x_norm = int(x * 65535 / screen_width)
+            y_norm = int(y * 65535 / screen_height)
+
+            # Gửi sự kiện di chuyển và GIỮ CHUỘT TRÁI cùng lúc
+            # MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE: Di chuyển tuyệt đối
+            # MOUSEEVENTF_LEFTDOWN: Giữ chuột trái xuống
+            user32.mouse_event(
+                MOUSEEVENTF_MOVE | MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_ABSOLUTE,
+                x_norm,
+                y_norm,
+                0,
+                0
+            )
+
             time.sleep(duration / steps)
 
     def _sleep_interruptible(self, seconds: float) -> None:
