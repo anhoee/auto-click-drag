@@ -1,11 +1,23 @@
 import ctypes
 import ctypes.wintypes
+import datetime as dt
+import hashlib
+import json
+import math
+import os
 import queue
 import random
+import socket
+import sys
 import threading
 import time
 import tkinter as tk
+import urllib.error
+import urllib.request
+import uuid
+import webbrowser
 from dataclasses import dataclass
+from pathlib import Path
 from tkinter import messagebox, ttk
 
 try:
@@ -36,8 +48,246 @@ MOD_SHIFT = 0x0004
 WM_HOTKEY = 0x0312
 CF_UNICODETEXT = 13
 GMEM_MOVEABLE = 0x0002
+TRIAL_DAYS = 3
+
+try:
+    import build_settings
+except ImportError:
+    build_settings = None
+
+DEFAULT_LICENSE_SERVER_URL = getattr(build_settings, "DEFAULT_LICENSE_SERVER_URL", "http://127.0.0.1:8008")
+DEFAULT_PURCHASE_URL = getattr(build_settings, "DEFAULT_PURCHASE_URL", DEFAULT_LICENSE_SERVER_URL)
+
+LICENSE_SERVER_URL = os.environ.get("AUTO_CLICK_LICENSE_SERVER", DEFAULT_LICENSE_SERVER_URL)
+PURCHASE_URL = os.environ.get("AUTO_CLICK_PURCHASE_URL", DEFAULT_PURCHASE_URL)
+
+# Cổng loopback cố định dùng làm khóa single-instance kiêm kênh báo hiệu.
+SINGLE_INSTANCE_PORT = 50573
+SINGLE_INSTANCE_TOKEN = b"AUTO_CLICK_DRAG_SHOW\n"
+
+
+class SingleInstance:
+    """Đảm bảo chỉ một bản app chạy.
+
+    Bản đầu tiên giữ một socket lắng nghe trên cổng loopback cố định và đóng
+    vai trò "khóa". Bản thứ hai bind thất bại nên biết đã có app chạy, gửi
+    tín hiệu để bản cũ hiện cửa sổ lên rồi tự thoát.
+    """
+
+    def __init__(self, port: int = SINGLE_INSTANCE_PORT) -> None:
+        self.port = port
+        self.listener: socket.socket | None = None
+        self.app: "AutoClickDragApp | None" = None
+        self._thread: threading.Thread | None = None
+        self._stop = threading.Event()
+
+    def acquire(self) -> bool:
+        """Trả về True nếu là bản đầu tiên, False nếu đã có bản khác chạy."""
+        listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            listener.bind(("127.0.0.1", self.port))
+        except OSError:
+            listener.close()
+            return False
+        listener.listen(5)
+        self.listener = listener
+        return True
+
+    def notify_existing(self) -> bool:
+        """Gửi tín hiệu cho bản đang chạy để nó hiện cửa sổ."""
+        try:
+            with socket.create_connection(("127.0.0.1", self.port), timeout=1.0) as conn:
+                conn.sendall(SINGLE_INSTANCE_TOKEN)
+            return True
+        except OSError:
+            return False
+
+    def start_listener(self, app: "AutoClickDragApp") -> None:
+        if self.listener is None:
+            return
+        self.app = app
+        self._thread = threading.Thread(target=self._serve, daemon=True)
+        self._thread.start()
+
+    def _serve(self) -> None:
+        assert self.listener is not None
+        while not self._stop.is_set():
+            try:
+                conn, _ = self.listener.accept()
+            except OSError:
+                break
+            with conn:
+                try:
+                    conn.recv(64)
+                except OSError:
+                    pass
+            if self.app is not None:
+                self.app.queue_ui(self.app.show_window)
+
+    def close(self) -> None:
+        self._stop.set()
+        if self.listener is not None:
+            try:
+                self.listener.close()
+            except OSError:
+                pass
+            self.listener = None
 
 user32.GetClipboardData.restype = ctypes.c_void_p
+
+
+def utc_now() -> dt.datetime:
+    return dt.datetime.now(dt.UTC)
+
+
+def parse_utc(value: str | None) -> dt.datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=dt.UTC)
+    return parsed.astimezone(dt.UTC)
+
+
+def iso_utc(value: dt.datetime) -> str:
+    return value.astimezone(dt.UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def post_json(url: str, payload: dict, timeout: float = 8.0) -> dict:
+    data = json.dumps(payload).encode("utf-8")
+    request = urllib.request.Request(
+        url,
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            body = response.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(detail or f"HTTP {exc.code}") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"Không kết nối được server bản quyền: {exc.reason}") from exc
+    try:
+        return json.loads(body)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("Server bản quyền trả về dữ liệu không hợp lệ.") from exc
+
+
+class LicenseManager:
+    def __init__(self, server_url: str = LICENSE_SERVER_URL) -> None:
+        self.server_url = server_url.rstrip("/")
+        self.store_path = self._store_path()
+        self.machine_id = self._machine_id()
+        self.data = self._load()
+        if "trial_started_at" not in self.data:
+            self.data["trial_started_at"] = iso_utc(utc_now())
+            self._save()
+
+    def _store_path(self) -> Path:
+        base = os.environ.get("APPDATA")
+        root = Path(base) if base else Path.home() / "AppData" / "Roaming"
+        return root / "AutoClickDrag" / "license.json"
+
+    def _machine_id(self) -> str:
+        raw = "|".join(
+            [
+                str(uuid.getnode()),
+                os.environ.get("COMPUTERNAME", ""),
+                os.environ.get("USERNAME", ""),
+            ]
+        )
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+    def _load(self) -> dict:
+        try:
+            return json.loads(self.store_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {}
+
+    def _save(self) -> None:
+        self.store_path.parent.mkdir(parents=True, exist_ok=True)
+        self.store_path.write_text(json.dumps(self.data, indent=2), encoding="utf-8")
+
+    def trial_expires_at(self) -> dt.datetime:
+        started_at = parse_utc(self.data.get("trial_started_at")) or utc_now()
+        return started_at + dt.timedelta(days=TRIAL_DAYS)
+
+    def trial_days_left(self) -> int:
+        remaining = self.trial_expires_at() - utc_now()
+        if remaining.total_seconds() <= 0:
+            return 0
+        return max(1, math.ceil(remaining.total_seconds() / 86400))
+
+    def cached_license_valid(self) -> bool:
+        expires_at = parse_utc(self.data.get("expires_at"))
+        return bool(self.data.get("license_key")) and (expires_at is None or expires_at > utc_now())
+
+    def license_days_left(self) -> int | None:
+        expires_at = parse_utc(self.data.get("expires_at"))
+        if expires_at is None:
+            return None
+        remaining = expires_at - utc_now()
+        if remaining.total_seconds() <= 0:
+            return 0
+        return max(1, math.ceil(remaining.total_seconds() / 86400))
+
+    def license_summary(self) -> tuple[str, str]:
+        if self.cached_license_valid():
+            days_left = self.license_days_left()
+            key = str(self.data.get("license_key", ""))
+            masked = f"{key[:8]}...{key[-4:]}" if len(key) > 14 else key
+            if days_left is None:
+                return "Đã kích hoạt", f"Key {masked} - gói vĩnh viễn."
+            return "Đã kích hoạt", f"Key {masked} - còn {days_left} ngày sử dụng."
+        days_left = self.trial_days_left()
+        if days_left > 0:
+            return "Dùng thử miễn phí", f"Còn {days_left} ngày dùng thử. Nhập key sau khi mua để kích hoạt."
+        return "Cần key bản quyền", "Dùng thử đã hết hạn. Vui lòng thêm key để tiếp tục sử dụng."
+
+    def is_allowed(self) -> bool:
+        return self.cached_license_valid() or self.trial_expires_at() > utc_now()
+
+    def status_text(self) -> str:
+        title, detail = self.license_summary()
+        return f"{title}: {detail}"
+
+    def activate(self, key: str) -> str:
+        normalized = key.strip().upper()
+        if not normalized:
+            raise ValueError("Hãy nhập key bản quyền.")
+        response = post_json(
+            f"{self.server_url}/api/license/activate",
+            {"key": normalized, "machine_id": self.machine_id},
+        )
+        if not response.get("valid"):
+            raise ValueError(response.get("message") or "Key không hợp lệ.")
+        self.data["license_key"] = normalized
+        self.data["expires_at"] = response.get("expires_at")
+        self.data["activated_at"] = iso_utc(utc_now())
+        self._save()
+        return response.get("message") or "Kích hoạt thành công."
+
+    def verify_online(self) -> bool:
+        key = self.data.get("license_key")
+        if not key:
+            return False
+        response = post_json(
+            f"{self.server_url}/api/license/verify",
+            {"key": key, "machine_id": self.machine_id},
+        )
+        if response.get("valid"):
+            self.data["expires_at"] = response.get("expires_at")
+            self._save()
+            return True
+        self.data.pop("license_key", None)
+        self.data.pop("expires_at", None)
+        self._save()
+        return False
 user32.GetClipboardData.argtypes = [ctypes.c_uint]
 user32.SetClipboardData.restype = ctypes.c_void_p
 user32.SetClipboardData.argtypes = [ctypes.c_uint, ctypes.c_void_p]
@@ -334,6 +584,8 @@ class AutoClickDragApp(tk.Tk):
         self.photo_icons = self._create_photo_icons()
         self.ui_queue: queue.SimpleQueue = queue.SimpleQueue()
         self.hotkeys = HotkeyListener(self)
+        self.license_manager = LicenseManager()
+        self.single_instance: SingleInstance | None = None
 
         self.configure(background="#eef2f7")
         self._apply_style()
@@ -386,10 +638,13 @@ class AutoClickDragApp(tk.Tk):
         style.configure("Soft.TButton", background="#e2e8f0", foreground="#172033", padding=(12, 7))
         style.map("Soft.TButton", background=[("active", "#cbd5e1")])
         style.configure("Status.TLabel", background="#dbeafe", foreground="#1e3a8a", padding=(12, 8), font=("Segoe UI", 10, "bold"))
+        style.configure("LicenseTitle.TLabel", background="#ffffff", foreground="#0f172a", font=("Segoe UI", 11, "bold"))
+        style.configure("LicenseDetail.TLabel", background="#ffffff", foreground="#475569")
+        style.configure("LicenseOk.TLabel", background="#dcfce7", foreground="#166534", padding=(10, 7), font=("Segoe UI", 10, "bold"))
 
     def _build_ui(self) -> None:
         self.columnconfigure(0, weight=1)
-        self.rowconfigure(1, weight=1)
+        self.rowconfigure(2, weight=1)
 
         header = ttk.Frame(self, padding=(18, 14, 18, 12), style="Header.TFrame")
         header.grid(row=0, column=0, sticky="ew")
@@ -402,8 +657,13 @@ class AutoClickDragApp(tk.Tk):
             style="HeaderText.TLabel",
         ).grid(row=1, column=0, sticky="w", pady=(4, 0))
 
+        license_bar = ttk.Frame(self, padding=(16, 12, 16, 0), style="App.TFrame")
+        license_bar.grid(row=1, column=0, sticky="ew")
+        license_bar.columnconfigure(0, weight=1)
+        self._build_license_panel(license_bar)
+
         content = ttk.Frame(self, padding=(16, 14, 16, 12), style="App.TFrame")
-        content.grid(row=1, column=0, sticky="nsew")
+        content.grid(row=2, column=0, sticky="nsew")
         content.columnconfigure(0, weight=1)
         content.columnconfigure(1, weight=1)
         content.rowconfigure(0, weight=1)
@@ -452,7 +712,7 @@ class AutoClickDragApp(tk.Tk):
         self.click_count_var = tk.StringVar(value="2")
         self.click_interval_var = tk.StringVar(value="0.08")
         self.hold_delay_var = tk.StringVar(value="0.10")
-        self.drag_duration_var = tk.StringVar(value="0.35")
+        self.drag_duration_var = tk.StringVar(value="0.15")
         self.key_var = tk.StringVar(value="tab")
         self.detect_marker_var = tk.BooleanVar(value=False)
         self.marker_text_var = tk.StringVar(value="-")
@@ -489,7 +749,7 @@ class AutoClickDragApp(tk.Tk):
         ttk.Button(right, text="Áp dụng hotkey", command=self.apply_hotkeys, style="Soft.TButton").grid(row=15, column=1, sticky="ew", pady=(6, 0))
 
         controls = ttk.Frame(self, padding=(16, 0, 16, 14), style="App.TFrame")
-        controls.grid(row=2, column=0, sticky="ew")
+        controls.grid(row=3, column=0, sticky="ew")
         controls.columnconfigure(2, weight=1)
 
         self.start_button = ttk.Button(controls, text="Chạy", command=self.start_worker, style="Primary.TButton")
@@ -500,6 +760,39 @@ class AutoClickDragApp(tk.Tk):
 
         self.status_var = tk.StringVar(value="Sẵn sàng.")
         ttk.Label(controls, textvariable=self.status_var, style="Status.TLabel").grid(row=1, column=0, columnspan=4, sticky="ew", pady=(10, 0))
+
+    def _build_license_panel(self, parent: ttk.Frame) -> None:
+        panel = ttk.LabelFrame(parent, text="Bản quyền", padding=14, style="Panel.TLabelframe")
+        panel.grid(row=0, column=0, sticky="ew")
+        panel.columnconfigure(0, weight=1)
+
+        self.license_key_var = tk.StringVar(value=self.license_manager.data.get("license_key", ""))
+        self.license_title_var = tk.StringVar()
+        self.license_detail_var = tk.StringVar()
+        self.license_badge_var = tk.StringVar()
+
+        self.license_status_frame = ttk.Frame(panel)
+        self.license_status_frame.grid(row=0, column=0, sticky="ew")
+        self.license_status_frame.columnconfigure(0, weight=1)
+        ttk.Label(self.license_status_frame, textvariable=self.license_title_var, style="LicenseTitle.TLabel").grid(row=0, column=0, sticky="w")
+        self.license_badge_label = ttk.Label(self.license_status_frame, textvariable=self.license_badge_var, style="LicenseOk.TLabel")
+        self.license_badge_label.grid(row=0, column=1, sticky="e", padx=(8, 0))
+        ttk.Label(
+            self.license_status_frame,
+            textvariable=self.license_detail_var,
+            wraplength=820,
+            style="LicenseDetail.TLabel",
+        ).grid(row=1, column=0, columnspan=2, sticky="ew", pady=(4, 0))
+
+        self.license_entry_frame = ttk.Frame(panel)
+        self.license_entry_frame.grid(row=1, column=0, sticky="ew", pady=(10, 0))
+        self.license_entry_frame.columnconfigure(1, weight=1)
+        ttk.Label(self.license_entry_frame, text="Key bản quyền").grid(row=0, column=0, sticky="w", padx=(0, 10), pady=6)
+        ttk.Entry(self.license_entry_frame, textvariable=self.license_key_var).grid(row=0, column=1, sticky="ew", pady=6)
+        self.activate_license_button = ttk.Button(self.license_entry_frame, text="Thêm key", command=self.activate_license, style="Primary.TButton")
+        self.activate_license_button.grid(row=0, column=2, sticky="ew", padx=(10, 0), pady=6)
+        ttk.Button(self.license_entry_frame, text="Mua key", command=self.open_purchase_page, style="Soft.TButton").grid(row=0, column=3, sticky="ew", padx=(8, 0), pady=6)
+        self.refresh_license_status()
 
     def _entry_row(self, parent: ttk.Frame, row: int, label: str, variable: tk.StringVar) -> None:
         ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", pady=6)
@@ -570,7 +863,10 @@ class AutoClickDragApp(tk.Tk):
 
     def show_window(self) -> None:
         self.deiconify()
+        self.state("normal")
         self.lift()
+        self.attributes("-topmost", True)
+        self.after(200, lambda: self.attributes("-topmost", False))
         self.focus_force()
 
     def _on_unmap(self, event) -> None:
@@ -611,6 +907,44 @@ class AutoClickDragApp(tk.Tk):
             return
         self.set_status(f"Hotkey đang dùng: {self.start_hotkey_var.get()} chạy/tạm dừng, {self.stop_hotkey_var.get()} dừng.")
 
+    def refresh_license_status(self) -> None:
+        title, detail = self.license_manager.license_summary()
+        self.license_title_var.set(title)
+        self.license_detail_var.set(detail)
+        if self.license_manager.cached_license_valid():
+            self.license_badge_var.set("ACTIVE")
+            self.license_badge_label.grid()
+            self.license_entry_frame.grid_remove()
+        else:
+            self.license_badge_var.set("")
+            self.license_badge_label.grid_remove()
+            self.license_entry_frame.grid()
+
+    def open_purchase_page(self) -> None:
+        webbrowser.open(PURCHASE_URL)
+        self.set_status("Đã mở trang mua key trên trình duyệt.")
+
+    def activate_license(self) -> None:
+        try:
+            message = self.license_manager.activate(self.license_key_var.get())
+        except (RuntimeError, ValueError) as exc:
+            messagebox.showerror("Kích hoạt thất bại", str(exc))
+            self.refresh_license_status()
+            return
+        self.refresh_license_status()
+        self.set_status(message)
+        messagebox.showinfo("Kích hoạt thành công", message)
+
+    def ensure_license_allowed(self) -> bool:
+        self.refresh_license_status()
+        if self.license_manager.is_allowed():
+            return True
+        messagebox.showwarning(
+            "Cần key bản quyền",
+            "Bạn đã hết 3 ngày dùng thử miễn phí. Vui lòng nhập key bản quyền để tiếp tục sử dụng.",
+        )
+        return False
+
     def toggle_running(self) -> None:
         if self.running:
             self.stop_worker()
@@ -619,6 +953,8 @@ class AutoClickDragApp(tk.Tk):
 
     def start_worker(self) -> None:
         if self.running:
+            return
+        if not self.ensure_license_allowed():
             return
         try:
             config = self.read_config()
@@ -636,6 +972,8 @@ class AutoClickDragApp(tk.Tk):
 
     def run_one_cycle(self) -> None:
         if self.running:
+            return
+        if not self.ensure_license_allowed():
             return
         try:
             config = self.read_config()
@@ -792,9 +1130,14 @@ class AutoClickDragApp(tk.Tk):
             time.sleep(duration / steps)
 
     def _sleep_interruptible(self, seconds: float) -> None:
+        if seconds <= 0:
+            return
         end = time.monotonic() + seconds
         while time.monotonic() < end and not self.stop_event.is_set():
-            time.sleep(min(0.03, end - time.monotonic()))
+            remaining = end - time.monotonic()
+            if remaining <= 0:
+                break
+            time.sleep(min(0.03, remaining))
 
     def _read_int(self, value: str, label: str, minimum: int) -> int:
         try:
@@ -810,6 +1153,8 @@ class AutoClickDragApp(tk.Tk):
             parsed = float(value.strip().replace(",", "."))
         except ValueError as exc:
             raise ValueError(f"{label} phải là số.") from exc
+        if not math.isfinite(parsed):
+            raise ValueError(f"{label} phải là số hữu hạn.")
         if parsed < minimum:
             raise ValueError(f"{label} phải >= {minimum}.")
         return parsed
@@ -823,6 +1168,8 @@ class AutoClickDragApp(tk.Tk):
         self.closing = True
         self.stop_worker()
         self.hotkeys.stop()
+        if self.single_instance is not None:
+            self.single_instance.close()
         if self.tray_icon is not None:
             self.tray_icon.stop()
             self.tray_icon = None
@@ -833,4 +1180,12 @@ class AutoClickDragApp(tk.Tk):
 
 
 if __name__ == "__main__":
-    AutoClickDragApp().mainloop()
+    guard = SingleInstance()
+    if not guard.acquire():
+        # Đã có bản đang chạy: báo cho nó hiện cửa sổ rồi thoát.
+        guard.notify_existing()
+        sys.exit(0)
+    app = AutoClickDragApp()
+    app.single_instance = guard
+    guard.start_listener(app)
+    app.mainloop()

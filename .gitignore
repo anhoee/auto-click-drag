@@ -12,6 +12,12 @@ env/
 build/
 dist/
 *.spec
+build_settings.py
+vercel-admin-token.txt
+
+# License server local data
+licenses.sqlite3
+licenses.sqlite3-*
 
 # Local test output
 test-results/
@@ -22,3 +28,11 @@ Thumbs.db
 .idea/
 .vscode/
 
+# Next.js web app
+web/.next/
+web/node_modules/
+web/.vercel/
+web/.env.local
+web/tsconfig.tsbuildinfo
+web/public/downloads/*.exe
+web/public/downloads/*.zip

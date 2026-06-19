@@ -1,0 +1,9 @@
+.git
+__pycache__
+*.pyc
+build
+dist
+test-results
+licenses.sqlite3
+licenses.sqlite3-*
+build_settings.py

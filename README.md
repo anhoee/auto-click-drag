@@ -77,6 +77,174 @@ Hoặc double-click:
 run_app.bat
 ```
 
+## Bản quyền, dùng thử và cấp key
+
+App cho dùng thử miễn phí 3 ngày trên mỗi máy. Sau khi hết dùng thử, người dùng phải nhập key do server của bạn cấp.
+
+### Chạy server cấp key
+
+Server dùng Python chuẩn và SQLite, không cần cài thêm thư viện:
+
+```powershell
+cd "C:\Users\Vanh\Documents\auto click"
+$env:LICENSE_ADMIN_TOKEN="doi-token-admin-nay"
+python license_server.py serve --host 0.0.0.0 --port 8008
+```
+
+Hoặc double-click:
+
+```text
+run_license_server.bat
+```
+
+Database key sẽ nằm ở:
+
+```text
+licenses.sqlite3
+```
+
+### Tạo key để bán
+
+Tạo key 30 ngày:
+
+```powershell
+python license_server.py create-key --days 30 --note "ten-khach-hang"
+```
+
+Tạo key vĩnh viễn:
+
+```powershell
+python license_server.py create-key --days 0 --note "ten-khach-hang"
+```
+
+Key chỉ bắt đầu tính hạn khi khách nhập key và kích hoạt lần đầu. Sau khi kích hoạt, key bị khóa theo máy đó.
+
+### Đổi địa chỉ server trong app
+
+Mặc định app gọi server tại:
+
+```text
+http://127.0.0.1:8008
+```
+
+Khi bán thật, hãy đưa `license_server.py` lên VPS/server riêng, mở port hoặc đặt sau domain HTTPS. Trước khi chạy hoặc build app, đặt biến môi trường:
+
+```powershell
+$env:AUTO_CLICK_LICENSE_SERVER="https://domain-cua-ban.com"
+python auto_click_drag.py
+```
+
+Khi build `.exe`, chạy `build_exe.bat` và nhập URL server public khi script hỏi. URL này sẽ được nhúng vào file exe.
+
+### Deploy server miễn phí
+
+Khuyến nghị dùng Koyeb free tier cho bản quyền nhỏ vì có 1 web service miễn phí. Render cũng dùng được nhưng free service có thể ngủ khi không có request; lần kích hoạt đầu tiên có thể chậm. Fly.io hiện không phù hợp nếu cần free lâu dài cho tài khoản mới.
+
+### Deploy bằng Next.js trên Vercel
+
+Thư mục `web/` là một app Next.js gồm trang tải app và API license:
+
+```text
+web/
+```
+
+App này phù hợp để deploy lên Vercel. Vì Vercel serverless không nên lưu SQLite local lâu dài, bản Next.js dùng Neon Postgres qua biến `DATABASE_URL`.
+
+Các bước:
+
+1. Tạo database miễn phí trên Neon và copy connection string.
+2. Push repo lên GitHub.
+3. Tạo project Vercel, chọn root directory là `web`.
+4. Thêm env vars:
+
+```text
+DATABASE_URL=postgresql://...
+LICENSE_ADMIN_TOKEN=mot-token-bi-mat-cua-ban
+NEXT_PUBLIC_DOWNLOAD_URL=/downloads/AutoClickDrag.exe
+NEXT_PUBLIC_APP_VERSION=1.0.0
+```
+
+5. Deploy. URL Vercel nhận được sẽ là license server URL để nhập khi chạy `build_exe.bat`.
+
+Tạo key qua API Vercel từ máy bạn:
+
+```powershell
+cd web
+$env:LICENSE_SERVER_URL="https://ten-project.vercel.app"
+$env:LICENSE_ADMIN_TOKEN="mot-token-bi-mat-cua-ban"
+npm run key:create -- --days=30 --note="ten-khach"
+```
+
+Hoặc mở trang admin:
+
+```text
+https://ten-project.vercel.app/admin
+```
+
+Nhập `LICENSE_ADMIN_TOKEN` để tạo key, xem danh sách key, khóa/mở key.
+
+Nếu muốn trang web cho tải trực tiếp file exe, copy file sau khi build vào:
+
+```text
+web\public\downloads\AutoClickDrag.exe
+```
+
+Rồi commit/push để Vercel deploy lại. Nếu file exe quá lớn, upload lên GitHub Releases hoặc storage khác rồi đổi `NEXT_PUBLIC_DOWNLOAD_URL`.
+
+#### Deploy lên Koyeb
+
+1. Push code lên GitHub.
+2. Vào Koyeb, tạo Web Service từ repository GitHub.
+3. Chọn deploy bằng Dockerfile.
+4. Đặt biến môi trường:
+
+```text
+LICENSE_ADMIN_TOKEN=mot-token-bi-mat-cua-ban
+LICENSE_DB=/data/licenses.sqlite3
+```
+
+5. Thêm persistent volume mount vào `/data` nếu Koyeb cho cấu hình volume trên plan bạn dùng. Nếu không có volume, database SQLite có thể mất khi service redeploy.
+6. Deploy xong, copy URL dạng:
+
+```text
+https://ten-app-cua-ban.koyeb.app
+```
+
+URL này dùng để build file `.exe`.
+
+#### Deploy lên Render
+
+1. Tạo Web Service từ GitHub.
+2. Chọn Docker.
+3. Đặt biến môi trường:
+
+```text
+LICENSE_ADMIN_TOKEN=mot-token-bi-mat-cua-ban
+LICENSE_DB=/data/licenses.sqlite3
+```
+
+4. Nếu dùng SQLite thật, cần disk/persistent storage. Nếu không có disk, key có thể mất khi redeploy/restart. Với bán thật, nên dùng VPS rẻ hoặc database ngoài.
+
+### Build file .exe cho khách tải
+
+Double-click:
+
+```text
+build_exe.bat
+```
+
+Khi script hỏi `License server URL`, nhập URL server public, ví dụ:
+
+```text
+https://ten-app-cua-ban.koyeb.app
+```
+
+File gửi cho khách nằm ở:
+
+```text
+dist\AutoClickDrag.exe
+```
+
 ## Cách sử dụng nhanh
 
 1. Mở website/ứng dụng cần thao tác.
