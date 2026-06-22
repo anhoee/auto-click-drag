@@ -231,61 +231,78 @@ export default function AdminPage() {
     <main className="admin-shell">
       <header className="admin-header">
         <div>
-          <h1 className="admin-title">Quản lý key</h1>
-          <p className="admin-subtitle">Tạo, sửa hạn dùng, khóa và xoá key bản quyền cho khách.</p>
+          <h1 className="admin-title">Hệ Thống Quản Lý Key</h1>
+          <p className="admin-subtitle">Tạo mới khóa kích hoạt, cấu hình thời gian sử dụng, khóa/mở khóa bản quyền phần mềm.</p>
         </div>
         <a className="button secondary" href="/">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: "6px" }}><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           Trang tải app
         </a>
       </header>
 
       <div className="stat-row">
         <div className="stat-card">
-          <span className="stat-value">{stats.total}</span>
-          <span className="stat-label">Tổng key</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span className="stat-value">{stats.total}</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+          </div>
+          <span className="stat-label">Tổng số Key</span>
         </div>
         <div className="stat-card">
-          <span className="stat-value">{stats.active}</span>
-          <span className="stat-label">Đang dùng</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span className="stat-value" style={{ color: "#34d399" }}>{stats.active}</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <span className="stat-label">Đang hoạt động</span>
         </div>
         <div className="stat-card">
-          <span className="stat-value">{stats.unused}</span>
-          <span className="stat-label">Chưa dùng</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span className="stat-value" style={{ color: "#60a5fa" }}>{stats.unused}</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          </div>
+          <span className="stat-label">Chưa sử dụng</span>
         </div>
         <div className="stat-card">
-          <span className="stat-value">{stats.expired}</span>
-          <span className="stat-label">Hết hạn</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span className="stat-value" style={{ color: "#f59e0b" }}>{stats.expired}</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <span className="stat-label">Đã hết hạn</span>
         </div>
         <div className="stat-card">
-          <span className="stat-value">{stats.disabled}</span>
-          <span className="stat-label">Đã khóa</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span className="stat-value" style={{ color: "#f87171" }}>{stats.disabled}</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <span className="stat-label">Đã bị khóa</span>
         </div>
       </div>
 
       <div className="admin-grid">
         <section className="admin-card">
-          <h2 className="card-title">Tạo key mới</h2>
+          <h2 className="card-title">Tạo Key Bản Quyền</h2>
           <form onSubmit={createKey}>
             <div className="field">
-              <label htmlFor="token">Admin token</label>
+              <label htmlFor="token">Admin Token Xác Thực</label>
               <input
                 id="token"
                 className="input"
                 type="password"
                 value={token}
                 onChange={(event) => setToken(event.target.value)}
-                placeholder="LICENSE_ADMIN_TOKEN"
+                placeholder="Nhập mã bí mật..."
               />
             </div>
 
             <div className="field">
-              <label htmlFor="days">Số ngày dùng</label>
+              <label htmlFor="days">Thời Hạn Sử Dụng (Ngày)</label>
               <input
                 id="days"
                 className="input"
                 value={days}
                 disabled={lifetime}
                 onChange={(event) => setDays(event.target.value)}
+                placeholder="30"
               />
             </div>
 
@@ -295,48 +312,57 @@ export default function AdminPage() {
                 checked={lifetime}
                 onChange={(event) => setLifetime(event.target.checked)}
               />
-              <span>Key vĩnh viễn (không hết hạn)</span>
+              <span>Cấp quyền Vĩnh Viễn</span>
             </label>
 
             <div className="field">
-              <label htmlFor="note">Ghi chú khách hàng</label>
-              <input id="note" className="input" value={note} onChange={(event) => setNote(event.target.value)} />
+              <label htmlFor="note">Ghi Chú Khách Hàng</label>
+              <input 
+                id="note" 
+                className="input" 
+                value={note} 
+                onChange={(event) => setNote(event.target.value)} 
+                placeholder="Ví dụ: Tên KH, số điện thoại..."
+              />
             </div>
 
             <div className="button-row">
               <button className="button" type="submit" disabled={loading || !token}>
-                Tạo key
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Tạo Key
               </button>
               <button className="button secondary" type="button" onClick={loadKeys} disabled={loading || !token}>
-                Tải danh sách
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                Tải Danh Sách
               </button>
             </div>
           </form>
 
-          {message ? <div className="message">{message}</div> : null}
-          {error ? <div className="message error">{error}</div> : null}
+          {message ? <div className="message">✨ {message}</div> : null}
+          {error ? <div className="message error">❌ {error}</div> : null}
         </section>
 
         <section className="admin-card">
           <div className="table-toolbar">
-            <h2 className="card-title">Danh sách key</h2>
+            <h2 className="card-title" style={{ marginBottom: 0 }}>Danh Sách Key Hiện Tại</h2>
             <input
               className="input search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Tìm theo key, ghi chú, máy..."
+              placeholder="🔍 Tìm theo Key, Ghi chú, Máy tính..."
             />
           </div>
+          
           <div className="table-wrap">
             <table className="key-table">
               <thead>
                 <tr>
-                  <th>Key</th>
-                  <th>Trạng thái</th>
-                  <th>Thời hạn</th>
-                  <th>Ghi chú</th>
-                  <th>Máy</th>
-                  <th>Hành động</th>
+                  <th>Mã Key</th>
+                  <th>Trạng Thái</th>
+                  <th>Thời Hạn &amp; Lịch Sử</th>
+                  <th>Ghi Chú</th>
+                  <th>ID Thiết Bị</th>
+                  <th>Hành Động</th>
                 </tr>
               </thead>
               <tbody>
@@ -344,40 +370,43 @@ export default function AdminPage() {
                   <tr>
                     <td colSpan={6} className="empty-cell">
                       {keys.length === 0
-                        ? "Chưa có dữ liệu. Nhập admin token rồi bấm Tải danh sách."
-                        : "Không có key nào khớp tìm kiếm."}
+                        ? "Chưa có dữ liệu. Nhập Admin Token ở cột bên trái rồi bấm Tải Danh Sách."
+                        : "Không tìm thấy Key nào trùng khớp."}
                     </td>
                   </tr>
                 ) : (
                   visibleKeys.map((item) =>
                     editingKey === item.key ? (
                       <tr key={item.key} className="editing-row">
-                        <td className="mono">{item.key}</td>
+                        <td className="mono" style={{ fontWeight: 600, color: "#a5b4fc" }}>{item.key}</td>
                         <td>
                           <span className={`badge ${item.status}`}>{statusLabel(item.status)}</span>
                         </td>
                         <td>
-                          <input
-                            className="input compact"
-                            value={editDays}
-                            disabled={editLifetime}
-                            onChange={(event) => setEditDays(event.target.value)}
-                          />
-                          <label className="checkbox tight">
+                          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                             <input
-                              type="checkbox"
-                              checked={editLifetime}
-                              onChange={(event) => setEditLifetime(event.target.checked)}
+                              className="input compact"
+                              value={editDays}
+                              disabled={editLifetime}
+                              onChange={(event) => setEditDays(event.target.value)}
                             />
-                            <span>Vĩnh viễn</span>
-                          </label>
+                            <label className="checkbox tight">
+                              <input
+                                type="checkbox"
+                                checked={editLifetime}
+                                onChange={(event) => setEditLifetime(event.target.checked)}
+                              />
+                              <span>Vĩnh viễn</span>
+                            </label>
+                          </div>
                         </td>
                         <td colSpan={2}>
                           <input
                             className="input compact"
+                            style={{ maxWidth: "100%" }}
                             value={editNote}
                             onChange={(event) => setEditNote(event.target.value)}
-                            placeholder="Ghi chú"
+                            placeholder="Nhập ghi chú mới..."
                           />
                         </td>
                         <td>
@@ -393,28 +422,30 @@ export default function AdminPage() {
                       </tr>
                     ) : (
                       <tr key={item.key}>
-                        <td className="mono">{item.key}</td>
+                        <td className="mono" style={{ fontWeight: 600, color: "#818cf8" }}>{item.key}</td>
                         <td>
                           <span className={`badge ${item.status}`}>{statusLabel(item.status)}</span>
                         </td>
                         <td>
                           <div className="duration-main">{durationLabel(item.duration_days)}</div>
-                          <div className="date-meta">Tạo: {formatDate(item.created_at)}</div>
-                          <div className="date-meta">Kích hoạt: {formatDate(item.activated_at)}</div>
-                          <div className="date-meta">Hết hạn: {formatDate(item.expires_at)}</div>
+                          <div className="date-meta">📅 Tạo: {formatDate(item.created_at)}</div>
+                          {item.activated_at && <div className="date-meta">⚡ Kích hoạt: {formatDate(item.activated_at)}</div>}
+                          {item.expires_at && <div className="date-meta">⏳ Hết hạn: {formatDate(item.expires_at)}</div>}
                         </td>
-                        <td>{item.note || "-"}</td>
-                        <td className="mono">{item.bound_machine ? `${item.bound_machine.slice(0, 12)}...` : "-"}</td>
+                        <td style={{ color: "#cbd5e1" }}>{item.note || "-"}</td>
+                        <td className="mono" style={{ fontSize: "12px", color: "#94a3b8" }}>
+                          {item.bound_machine ? `${item.bound_machine.slice(0, 14)}...` : "-"}
+                        </td>
                         <td>
                           <div className="action-group">
                             <button className="small-action" type="button" onClick={() => startEdit(item)} disabled={loading}>
                               Sửa
                             </button>
                             <button className="small-action" type="button" onClick={() => setDisabled(item.key, !item.disabled)} disabled={loading}>
-                              {item.disabled ? "Mở khóa" : "Khóa"}
+                              {item.disabled ? "Mở khóa" : "Khóa Key"}
                             </button>
                             <button className="small-action danger" type="button" onClick={() => removeKey(item.key)} disabled={loading}>
-                              Xoá
+                              Xóa
                             </button>
                           </div>
                         </td>
