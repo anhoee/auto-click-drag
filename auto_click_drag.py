@@ -565,8 +565,8 @@ class AutoClickDragApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("Auto Click Drag")
-        self.geometry("900x700")
-        self.minsize(840, 650)
+        self.geometry("920x820")
+        self.minsize(840, 740)
 
         self.positions: dict[str, tuple[int, int] | None] = {name: None for name in "ABCD"}
         self.target_position: tuple[int, int] | None = None
@@ -619,28 +619,50 @@ class AutoClickDragApp(tk.Tk):
             style.theme_use("clam")
         except tk.TclError:
             pass
-        style.configure(".", font=("Segoe UI", 10), background="#eef2f7", foreground="#172033")
-        style.configure("App.TFrame", background="#eef2f7")
-        style.configure("Header.TFrame", background="#172033")
-        style.configure("HeaderTitle.TLabel", background="#172033", foreground="#ffffff", font=("Segoe UI", 18, "bold"))
-        style.configure("HeaderText.TLabel", background="#172033", foreground="#cbd5e1")
-        style.configure("Panel.TLabelframe", background="#ffffff", bordercolor="#cbd5e1", relief="solid")
-        style.configure("Panel.TLabelframe.Label", background="#ffffff", foreground="#0f172a", font=("Segoe UI", 11, "bold"))
-        style.configure("TLabel", background="#ffffff", foreground="#172033")
-        style.configure("TCheckbutton", background="#ffffff", foreground="#172033")
-        style.configure("TRadiobutton", background="#ffffff", foreground="#172033")
-        style.configure("TEntry", fieldbackground="#ffffff")
-        style.configure("TCombobox", fieldbackground="#ffffff")
-        style.configure("Primary.TButton", background="#2563eb", foreground="#ffffff", padding=(14, 8), font=("Segoe UI", 10, "bold"))
-        style.map("Primary.TButton", background=[("active", "#1d4ed8"), ("disabled", "#94a3b8")])
-        style.configure("Danger.TButton", background="#dc2626", foreground="#ffffff", padding=(14, 8), font=("Segoe UI", 10, "bold"))
-        style.map("Danger.TButton", background=[("active", "#b91c1c")])
-        style.configure("Soft.TButton", background="#e2e8f0", foreground="#172033", padding=(12, 7))
-        style.map("Soft.TButton", background=[("active", "#cbd5e1")])
-        style.configure("Status.TLabel", background="#dbeafe", foreground="#1e3a8a", padding=(12, 8), font=("Segoe UI", 10, "bold"))
-        style.configure("LicenseTitle.TLabel", background="#ffffff", foreground="#0f172a", font=("Segoe UI", 11, "bold"))
-        style.configure("LicenseDetail.TLabel", background="#ffffff", foreground="#475569")
-        style.configure("LicenseOk.TLabel", background="#dcfce7", foreground="#166534", padding=(10, 7), font=("Segoe UI", 10, "bold"))
+
+        # Bảng màu hiện đại
+        bg = "#f1f5f9"        # nền tổng thể
+        card = "#ffffff"      # nền panel
+        ink = "#0f172a"       # chữ chính
+        sub = "#64748b"       # chữ phụ
+        line = "#e2e8f0"      # viền
+        accent = "#2563eb"    # nhấn (xanh)
+        accent_d = "#1d4ed8"
+
+        style.configure(".", font=("Segoe UI", 10), background=bg, foreground=ink)
+        style.configure("App.TFrame", background=bg)
+        style.configure("Header.TFrame", background="#0f172a")
+        style.configure("HeaderTitle.TLabel", background="#0f172a", foreground="#ffffff", font=("Segoe UI Semibold", 19, "bold"))
+        style.configure("HeaderText.TLabel", background="#0f172a", foreground="#94a3b8", font=("Segoe UI", 9))
+        style.configure("Panel.TLabelframe", background=card, bordercolor=line, relief="solid", borderwidth=1)
+        style.configure("Panel.TLabelframe.Label", background=card, foreground=ink, font=("Segoe UI Semibold", 11, "bold"))
+        style.configure("TLabel", background=card, foreground=ink)
+        style.configure("TCheckbutton", background=card, foreground=ink)
+        style.map("TCheckbutton", background=[("active", card)])
+        style.configure("TRadiobutton", background=card, foreground=ink)
+        style.map("TRadiobutton", background=[("active", card)])
+        style.configure("TEntry", fieldbackground="#ffffff", bordercolor=line, lightcolor=line, darkcolor=line, padding=5)
+        style.map("TEntry", bordercolor=[("focus", accent)], lightcolor=[("focus", accent)])
+        style.configure("TCombobox", fieldbackground="#ffffff", bordercolor=line, padding=5)
+        style.configure("Primary.TButton", background=accent, foreground="#ffffff", padding=(16, 9), font=("Segoe UI Semibold", 10, "bold"), borderwidth=0)
+        style.map("Primary.TButton", background=[("pressed", "#1e40af"), ("active", accent_d), ("disabled", "#93b4f4")])
+        style.configure("Danger.TButton", background="#e11d48", foreground="#ffffff", padding=(16, 9), font=("Segoe UI Semibold", 10, "bold"), borderwidth=0)
+        style.map("Danger.TButton", background=[("pressed", "#9f1239"), ("active", "#be123c")])
+        style.configure("Soft.TButton", background="#e2e8f0", foreground="#334155", padding=(13, 8), borderwidth=0)
+        style.map("Soft.TButton", background=[("pressed", "#cbd5e1"), ("active", "#dbe3ec")])
+        style.configure("Status.TLabel", background="#eff6ff", foreground="#1e40af", padding=(13, 9), font=("Segoe UI", 10))
+        style.configure("LicenseTitle.TLabel", background=card, foreground=ink, font=("Segoe UI Semibold", 11, "bold"))
+        style.configure("LicenseDetail.TLabel", background=card, foreground=sub)
+        style.configure("LicenseOk.TLabel", background="#dcfce7", foreground="#15803d", padding=(9, 3), font=("Segoe UI Semibold", 9, "bold"))
+
+        # Style riêng cho popup nhập key
+        style.configure("Ghost.TButton", background=card, foreground=accent, padding=(10, 6), font=("Segoe UI Semibold", 10, "bold"), borderwidth=0)
+        style.map("Ghost.TButton", background=[("active", "#eff6ff")])
+        style.configure("Dialog.TFrame", background=card)
+        style.configure("DialogTitle.TLabel", background=card, foreground=ink, font=("Segoe UI Semibold", 16, "bold"))
+        style.configure("DialogHint.TLabel", background=card, foreground=sub, font=("Segoe UI", 10))
+        style.configure("DialogField.TLabel", background=card, foreground=ink, font=("Segoe UI Semibold", 10, "bold"))
+        style.configure("Key.TEntry", fieldbackground="#f8fafc", padding=8)
 
     def _build_ui(self) -> None:
         self.columnconfigure(0, weight=1)
@@ -708,10 +730,10 @@ class AutoClickDragApp(tk.Tk):
 
         self.repeat_var = tk.StringVar(value="10")
         self.infinite_var = tk.BooleanVar(value=False)
-        self.cycle_delay_var = tk.StringVar(value="1.0")
+        self.cycle_delay_var = tk.StringVar(value="0.1")
         self.click_count_var = tk.StringVar(value="2")
         self.click_interval_var = tk.StringVar(value="0.08")
-        self.hold_delay_var = tk.StringVar(value="0.10")
+        self.hold_delay_var = tk.StringVar(value="0.35")
         self.drag_duration_var = tk.StringVar(value="0.15")
         self.key_var = tk.StringVar(value="tab")
         self.detect_marker_var = tk.BooleanVar(value=False)
@@ -762,7 +784,7 @@ class AutoClickDragApp(tk.Tk):
         ttk.Label(controls, textvariable=self.status_var, style="Status.TLabel").grid(row=1, column=0, columnspan=4, sticky="ew", pady=(10, 0))
 
     def _build_license_panel(self, parent: ttk.Frame) -> None:
-        panel = ttk.LabelFrame(parent, text="Bản quyền", padding=14, style="Panel.TLabelframe")
+        panel = ttk.LabelFrame(parent, text="Bản quyền", padding=10, style="Panel.TLabelframe")
         panel.grid(row=0, column=0, sticky="ew")
         panel.columnconfigure(0, weight=1)
 
@@ -784,14 +806,11 @@ class AutoClickDragApp(tk.Tk):
             style="LicenseDetail.TLabel",
         ).grid(row=1, column=0, columnspan=2, sticky="ew", pady=(4, 0))
 
-        self.license_entry_frame = ttk.Frame(panel)
-        self.license_entry_frame.grid(row=1, column=0, sticky="ew", pady=(10, 0))
-        self.license_entry_frame.columnconfigure(1, weight=1)
-        ttk.Label(self.license_entry_frame, text="Key bản quyền").grid(row=0, column=0, sticky="w", padx=(0, 10), pady=6)
-        ttk.Entry(self.license_entry_frame, textvariable=self.license_key_var).grid(row=0, column=1, sticky="ew", pady=6)
-        self.activate_license_button = ttk.Button(self.license_entry_frame, text="Thêm key", command=self.activate_license, style="Primary.TButton")
-        self.activate_license_button.grid(row=0, column=2, sticky="ew", padx=(10, 0), pady=6)
-        ttk.Button(self.license_entry_frame, text="Mua key", command=self.open_purchase_page, style="Soft.TButton").grid(row=0, column=3, sticky="ew", padx=(8, 0), pady=6)
+        self.license_action_frame = ttk.Frame(panel)
+        self.license_action_frame.grid(row=1, column=0, sticky="ew", pady=(10, 0))
+        self.activate_license_button = ttk.Button(self.license_action_frame, text="Thêm key", command=self.open_license_dialog, style="Primary.TButton")
+        self.activate_license_button.grid(row=0, column=0, padx=(0, 8))
+        ttk.Button(self.license_action_frame, text="Mua key", command=self.open_purchase_page, style="Soft.TButton").grid(row=0, column=1)
         self.refresh_license_status()
 
     def _entry_row(self, parent: ttk.Frame, row: int, label: str, variable: tk.StringVar) -> None:
@@ -914,15 +933,91 @@ class AutoClickDragApp(tk.Tk):
         if self.license_manager.cached_license_valid():
             self.license_badge_var.set("ACTIVE")
             self.license_badge_label.grid()
-            self.license_entry_frame.grid_remove()
+            self.license_action_frame.grid_remove()
         else:
             self.license_badge_var.set("")
             self.license_badge_label.grid_remove()
-            self.license_entry_frame.grid()
+            self.license_action_frame.grid()
 
     def open_purchase_page(self) -> None:
         webbrowser.open(PURCHASE_URL)
         self.set_status("Đã mở trang mua key trên trình duyệt.")
+
+    def open_license_dialog(self) -> None:
+        dialog = tk.Toplevel(self)
+        dialog.title("Kích hoạt bản quyền")
+        dialog.configure(background="#ffffff")
+        dialog.resizable(False, False)
+        dialog.transient(self)
+
+        container = ttk.Frame(dialog, padding=(28, 24, 28, 22), style="Dialog.TFrame")
+        container.grid(row=0, column=0, sticky="nsew")
+        container.columnconfigure(0, weight=1)
+
+        ttk.Label(container, text="🔑  Nhập key bản quyền", style="DialogTitle.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(
+            container,
+            text="Dán key bạn nhận được sau khi mua. Key sẽ được khóa theo máy này khi kích hoạt lần đầu.",
+            style="DialogHint.TLabel",
+            wraplength=380,
+            justify="left",
+        ).grid(row=1, column=0, sticky="w", pady=(8, 18))
+
+        ttk.Label(container, text="KEY BẢN QUYỀN", style="DialogField.TLabel").grid(row=2, column=0, sticky="w", pady=(0, 6))
+        dialog_key_var = tk.StringVar(value=self.license_key_var.get())
+        entry = ttk.Entry(container, textvariable=dialog_key_var, style="Key.TEntry", font=("Consolas", 12), width=34)
+        entry.grid(row=3, column=0, sticky="ew", ipady=4)
+
+        feedback_var = tk.StringVar()
+        feedback = ttk.Label(container, textvariable=feedback_var, style="DialogHint.TLabel", wraplength=380, justify="left")
+        feedback.grid(row=4, column=0, sticky="w", pady=(10, 0))
+
+        button_row = ttk.Frame(container, style="Dialog.TFrame")
+        button_row.grid(row=5, column=0, sticky="ew", pady=(20, 0))
+        button_row.columnconfigure(0, weight=1)
+
+        ttk.Button(button_row, text="Mua key", command=self.open_purchase_page, style="Ghost.TButton").grid(row=0, column=0, sticky="w")
+        ttk.Button(button_row, text="Hủy", command=dialog.destroy, style="Soft.TButton").grid(row=0, column=1, padx=(0, 8))
+        confirm_button = ttk.Button(button_row, text="Kích hoạt", style="Primary.TButton")
+        confirm_button.grid(row=0, column=2)
+
+        def submit() -> None:
+            key = dialog_key_var.get().strip()
+            if not key:
+                feedback.configure(style="DialogHint.TLabel")
+                feedback_var.set("Hãy nhập key trước khi kích hoạt.")
+                return
+            confirm_button.configure(state="disabled", text="Đang kiểm tra...")
+            feedback.configure(style="DialogHint.TLabel")
+            feedback_var.set("Đang kết nối server bản quyền...")
+            dialog.update_idletasks()
+            try:
+                message = self.license_manager.activate(key)
+            except (RuntimeError, ValueError) as exc:
+                confirm_button.configure(state="normal", text="Kích hoạt")
+                feedback.configure(style="DialogHint.TLabel")
+                feedback_var.set(f"❌ {exc}")
+                return
+            self.license_key_var.set(key)
+            self.refresh_license_status()
+            self.set_status(message)
+            dialog.destroy()
+            messagebox.showinfo("Kích hoạt thành công", message)
+
+        confirm_button.configure(command=submit)
+        entry.bind("<Return>", lambda _event: submit())
+
+        dialog.update_idletasks()
+        self._center_dialog(dialog)
+        dialog.grab_set()
+        entry.focus_set()
+
+    def _center_dialog(self, dialog: tk.Toplevel) -> None:
+        width = dialog.winfo_width()
+        height = dialog.winfo_height()
+        x = self.winfo_rootx() + (self.winfo_width() - width) // 2
+        y = self.winfo_rooty() + (self.winfo_height() - height) // 3
+        dialog.geometry(f"+{max(0, x)}+{max(0, y)}")
 
     def activate_license(self) -> None:
         try:
@@ -1051,46 +1146,64 @@ class AutoClickDragApp(tk.Tk):
         set_cursor_pos(*source)
         self._sleep_interruptible(0.05)
 
-        # 2. Thực hiện các click chuẩn (ví dụ: 2 lần click)
-        for _ in range(clicks_to_drag):
+        # 2. Logic nhận diện ký tự đặc biệt (Marker)
+        if config.detect_marker:
+            # Nhấp 3 lần để bôi đen toàn bộ dòng nhằm kiểm tra xem có marker hay không
+            for _ in range(3):
+                if self.stop_event.is_set():
+                    return
+                left_click()
+                self._sleep_interruptible(config.click_interval)
+
             if self.stop_event.is_set():
                 return
-            left_click()
-            self._sleep_interruptible(config.click_interval)
 
-        if self.stop_event.is_set():
-            return
-
-        # Nghỉ trước khi kéo (lần thứ 3 click giữ chuột)
-        self._sleep_interruptible(config.hold_delay)
-
-        # 3. Logic nhận diện ký tự đặc biệt (Marker)
-        if config.detect_marker and not self.stop_event.is_set():
+            self._sleep_interruptible(config.hold_delay)
             selected_text = copy_selected_text(config.copy_delay)
+
             if config.marker_text in selected_text:
-                # Sửa đổi ở đây: Thay vì click 1 lần, giờ sẽ click 3 lần
-                for _ in range(3):
+                # Dòng chứa marker -> Giữ nguyên trạng thái bôi đen cả dòng
+                self.post_status(f"Đã thấy '{config.marker_text}', bôi đen toàn bộ dòng để kéo.")
+            else:
+                # Dòng không chứa marker -> Quay lại click số lần thông thường (clicks_to_drag)
+                # Trước tiên click 1 lần để hủy chọn toàn bộ dòng
+                left_click()
+                self._sleep_interruptible(config.click_interval)
+
+                for _ in range(clicks_to_drag):
                     if self.stop_event.is_set():
                         return
-                    self._sleep_interruptible(config.click_interval)
-                    set_cursor_pos(*source)
                     left_click()
+                    self._sleep_interruptible(config.click_interval)
 
-                # Nghỉ một chút sau khi click 3 lần xong
+                if self.stop_event.is_set():
+                    return
+
                 self._sleep_interruptible(config.hold_delay)
-                self.post_status(f"Đã thấy '{config.marker_text}', đã click thêm 3 lần trước khi kéo.")
+        else:
+            # Logic bình thường khi không nhận diện marker
+            for _ in range(clicks_to_drag):
+                if self.stop_event.is_set():
+                    return
+                left_click()
+                self._sleep_interruptible(config.click_interval)
+
+            if self.stop_event.is_set():
+                return
+
+            self._sleep_interruptible(config.hold_delay)
 
         if self.stop_event.is_set():
             left_up()
             return
 
-        # 4. Thực hiện thao tác Kéo (Lần click giữ chuột)
+        # 3. Thực hiện thao tác Kéo (Lần click giữ chuột)
         set_cursor_pos(*source)
         left_down()
         self._drag_to(source, target, config.drag_duration)
         left_up()
 
-        # 5. Bấm phím kết thúc
+        # 4. Bấm phím kết thúc
         self._sleep_interruptible(0.05)
         press_key(config.key_name)
 
